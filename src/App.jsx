@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Route, Link } from "react-router-dom";
 import './App.css';
 import Game1 from './Games/Game1';
 import Money from './Games/Money';
+import WOF from './Games/WOF';
 
 const routeMapping = {
   "/home": {
@@ -18,6 +19,10 @@ const routeMapping = {
   "/money": {
     name: "money",
     displayName: "Money Game",
+  },
+  "/wof": {
+    name: "wof",
+    displayName: "Wheel Of Fortune",
   },
 }
 
@@ -87,6 +92,7 @@ class App extends React.Component {
             {/* <Route path="/messages/:id" exact render={(props) => <CustomDashboard isDataProcessEnabled={true} {...props} />} /> */}
             <Route path="/game1" component={Game1} />
             <Route path="/money" component={Money} />
+            <Route path="/wof" component={WOF} />
           </div>
         </div>
       </Router>
