@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import '../App.css';
 import { Wheel } from 'react-custom-roulette';
-import { Button, Icon, Header, Modal, Grid } from 'semantic-ui-react';
+import { Button, Icon, Header, Modal, Grid, Segment } from 'semantic-ui-react';
 import RouletteWheel from '../static/RouletteWheel.mp3';
 import { getWheelData } from '../utils/wofUtils';
 import WofSettings from '../components/wofSettings';
@@ -134,9 +134,10 @@ export default () => {
 
     <Grid columns={1}>
       <Grid.Row>
-          <div>
-            {getSettingsComponent()}
-            {announceWinner()}
+        <div className='center'>
+          {getSettingsComponent()}
+          {announceWinner()}
+          <div style={{ 'margin': 'auto', 'width':'66%' }}>
             <Wheel
               outerBorderColor={'#A6A6A7'}
               innerRadius={12}
@@ -154,13 +155,16 @@ export default () => {
                 rouletteWheel.pause();
               }}
             />
-            <Button primary icon disabled={currentData.length < 2} onClick={handleSpinClick} labelPosition='left'>
+          </div>
+          <div className='center'>
+            <Button primary icon disabled={currentData.length < 2} onClick={handleSpinClick} labelPosition='left' style={{'margin-left':'20%'}}>
               <Icon name='play' />SPIN
             </Button>
             <Button secondary icon disabled={data.length === currentData.length} onClick={handleResetClick} labelPosition='left'>
               <Icon name='redo' />RESET
             </Button>
           </div>
+        </div>
       </Grid.Row>
     </Grid>
   )
