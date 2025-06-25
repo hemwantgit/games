@@ -1,8 +1,9 @@
 import React from 'react';
-import { Menu, Input, Dropdown} from 'semantic-ui-react';
-import { BrowserRouter as Router, Route, Link } from "react-router-dom";
+import { Menu, Input, Dropdown } from 'semantic-ui-react';
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 
 import './App.css';
+import Home from './Games/home';
 import Game1 from './Games/Game1';
 import Money from './Games/Money';
 import WOF from './Games/WOF';
@@ -10,7 +11,7 @@ import WOF from './Games/WOF';
 const routeMapping = {
   "/home": {
     name: "home",
-    displayName: "home",
+    displayName: "Home",
   },
   "/game1": {
     name: "game1",
@@ -43,6 +44,7 @@ class App extends React.Component {
     const { activeItem } = this.state;
     return (
       <Router>
+
         <div style={{ padding: "30px", font: "20px" }}>
           <Menu pointing color={'blue'}>
             <Menu.Menu >
@@ -54,9 +56,9 @@ class App extends React.Component {
                   </Menu.Item>))
               }
               <Dropdown text='More' pointing className='link item'>
-      <Dropdown.Menu>
-        <Dropdown.Header>Simple</Dropdown.Header>
-        {/* <Dropdown.Item>
+                <Dropdown.Menu>
+                  <Dropdown.Header>Simple</Dropdown.Header>
+                  {/* <Dropdown.Item>
           <Dropdown text='Kids'>
             <Dropdown.Menu>
               <Dropdown.Header>Mens</Dropdown.Header>
@@ -72,14 +74,14 @@ class App extends React.Component {
             </Dropdown.Menu>
           </Dropdown>
         </Dropdown.Item> */}
-        <Dropdown.Item>Game 1</Dropdown.Item>
-        <Dropdown.Item>Game 2</Dropdown.Item>
-        <Dropdown.Divider />
-        <Dropdown.Header>Young</Dropdown.Header>
-        <Dropdown.Item>Game3</Dropdown.Item>
-        <Dropdown.Item>Game3 4</Dropdown.Item>
-      </Dropdown.Menu>
-      </Dropdown>
+                  <Dropdown.Item>Game 1</Dropdown.Item>
+                  <Dropdown.Item>Game 2</Dropdown.Item>
+                  <Dropdown.Divider />
+                  <Dropdown.Header>Young</Dropdown.Header>
+                  <Dropdown.Item>Game3</Dropdown.Item>
+                  <Dropdown.Item>Game3 4</Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
               <Menu.Item position='right'>
                 <Input icon='search' placeholder='Search...' />
               </Menu.Item>
@@ -87,12 +89,14 @@ class App extends React.Component {
           </Menu>
 
           <div style={{ paddingTop: '12px' }}>
-
-            <Route path="/home" exact component={home} />
-            {/* <Route path="/messages/:id" exact render={(props) => <CustomDashboard isDataProcessEnabled={true} {...props} />} /> */}
-            <Route path="/game1" component={Game1} />
-            <Route path="/money" component={Money} />
-            <Route path="/wof" component={WOF} />
+            <Routes>
+              <Route path="/" exact element={<Home/>} />
+              <Route path="/home" exact element={<Home/>} />
+              {/* <Route path="/messages/:id" exact render={(props) => <CustomDashboard isDataProcessEnabled={true} {...props} />} /> */}
+              <Route path="/game1" element={<Game1/>} />
+              <Route path="/money" element={<Money/>} />
+              <Route path="/wof" Component={WOF} />
+            </Routes>
           </div>
         </div>
       </Router>
@@ -100,10 +104,6 @@ class App extends React.Component {
   }
 
 
-}
-
-const home = () => {
-  return <div> 'Home page'</div>
 }
 
 

@@ -157,7 +157,7 @@ export default () => {
             />
           </div>
           <div className='center'>
-            <Button primary icon disabled={currentData.length < 2} onClick={handleSpinClick} labelPosition='left' style={{'margin-left':'20%'}}>
+            <Button primary icon disabled={currentData.length < 2} onClick={handleSpinClick} labelPosition='left' style={{'marginLeft':'20%'}}>
               <Icon name='play' />SPIN
             </Button>
             <Button secondary icon disabled={data.length === currentData.length} onClick={handleResetClick} labelPosition='left'>

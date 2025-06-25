@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { Form, TextArea, Radio } from 'semantic-ui-react'
+import React, { useState, useEffect } from 'react';
+import { Form, TextArea, Radio } from 'semantic-ui-react';
 import { REMOVE_OPTIONS } from '../utils/constants';
 
-export default (props) => {
-    const [optionsString, setOptionsString] = useState(props.wofSettingsModel.optionsString || '');
-    const [removeOption, setRemoveOption] = useState(props.wofSettingsModel.removeOption);
+export default function WofSettings({onSettingChange, wofSettingsModel = {optionsString:'', removeOption:'NO_REMOVE'}}) {
+    const [optionsString, setOptionsString] = useState(wofSettingsModel.optionsString);
+    const [removeOption, setRemoveOption] = useState(wofSettingsModel.removeOption);
 
-    React.useEffect(() => {
-        props.onSettingChange({
+    useEffect(() => {
+        onSettingChange && onSettingChange({
             optionsString: optionsString,
             removeOption
         });
