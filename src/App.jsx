@@ -40,6 +40,11 @@ class App extends React.Component {
 
   handleItemClick = (e, { name }) => this.setState({ activeItem: name })
 
+  changeTheme = (theme)=>{
+    console.log("change theme called");
+    document.body.classList.toggle("dark-theme");
+  }
+
   render() {
     const { activeItem } = this.state;
     return (
@@ -77,9 +82,9 @@ class App extends React.Component {
                   <Dropdown.Item>Game 1</Dropdown.Item>
                   <Dropdown.Item>Game 2</Dropdown.Item>
                   <Dropdown.Divider />
-                  <Dropdown.Header>Young</Dropdown.Header>
-                  <Dropdown.Item>Game3</Dropdown.Item>
-                  <Dropdown.Item>Game3 4</Dropdown.Item>
+                  <Dropdown.Header>Theme</Dropdown.Header>
+                  <Dropdown.Item onClick={()=>this.changeTheme('light')}>Light</Dropdown.Item>
+                  <Dropdown.Item onClick={()=>this.changeTheme('dark')}>Dark</Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
               <Menu.Item position='right'>
