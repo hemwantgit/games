@@ -7,11 +7,16 @@ import Home from './Games/home';
 import Game1 from './Games/Game1';
 import Money from './Games/Money';
 import WOF from './Games/WOF';
+import WordGame from './Games/WordGame';
 
 const routeMapping = {
   "/home": {
     name: "home",
     displayName: "Home",
+  },
+   "/wordGame": {
+    name: "wordgame",
+    displayName: "Word Memorizer",
   },
   "/game1": {
     name: "game1",
@@ -97,6 +102,7 @@ class App extends React.Component {
             <Routes>
               <Route path="/" exact element={<Home/>} />
               <Route path="/home" exact element={<Home/>} />
+              <Route path="/wordgame" element={<WordGame/>} />
               {/* <Route path="/messages/:id" exact render={(props) => <CustomDashboard isDataProcessEnabled={true} {...props} />} /> */}
               <Route path="/game1" element={<Game1/>} />
               <Route path="/money" element={<Money/>} />
