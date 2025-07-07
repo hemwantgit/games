@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
-import { shuffleArray } from '../utils/utils';
+import { shuffleArray } from '../utils/utils'; // Assuming utils.js exists and contains shuffleArray
+import { Icon } from 'semantic-ui-react'; 
+
 /**
  * PlayMode Component: The word guessing game.
  * @param {object} props
@@ -17,10 +19,13 @@ const WordPlayMode = ({ words }) => {
   const [sessionScore, setSessionScore] = useState(0); // Number of words correctly guessed in the session
   const [totalSessionErrors, setTotalSessionErrors] = useState(0); // Total errors across all words in the session
   const [isSessionOver, setIsSessionOver] = useState(false); // True when all words are guessed or max errors hit
-  const [timeElapsed, setTimeElapsed] = useState(0); // Time elapsed for the current word
-  const timerIntervalRef = useRef(null); // Ref to store the interval ID
+  const [countdownTime, setCountdownTime] = useState(60); // New state for the 60-second countdown timer
+  const timerIntervalRef = useRef(null); // Ref to store the interval ID for the countdown
+  const [totalHintCount, setTotalHintCount] = useState(0); // New state for total hints used in the session
+  const [currentWordHintUsed, setCurrentWordHintUsed] = useState(false); // New state to track if hint used for current word
 
   const MAX_ERRORS = 5;
+  const MAX_HINTS = 5; // Maximum hints allowed per session
 
   // Tone.js synths using useRef to persist across renders
   const applauseSynth = useRef(null);
@@ -69,6 +74,7 @@ const WordPlayMode = ({ words }) => {
       envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 },
       volume: -10
     }).toDestination();
+
     // Cleanup synths on unmount
     return () => {
       applauseSynth.current.dispose();
@@ -86,6 +92,24 @@ const WordPlayMode = ({ words }) => {
   const playDuck = useCallback(async () => { await Tone.start(); duckSynth.current.triggerAttackRelease("G2", "0.2"); }, []);
   const playBeep = useCallback(async () => { await Tone.start(); beepSynth.current.triggerAttackRelease("C5", "16n"); }, []); // Play a short beep
 
+  // Callback to handle pronunciation of the current word
+  const handlePronounceCurrentWord = useCallback(async () => {
+    // Get the actual word from the words array using the shuffled index
+    const wordToPronounce = words[shuffledWordIndices[currentWordIndexInShuffled]]?.word || '';
+    if (!wordToPronounce) return;
+
+    // Ensure Tone.js audio context is active (important for Web Audio API)
+    await Tone.start();
+
+    // Check if SpeechSynthesis API is supported by the browser
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(wordToPronounce);
+      utterance.lang = 'en-US'; // Set language for better pronunciation
+      window.speechSynthesis.speak(utterance);
+    } else {
+      setMessage('Text-to-speech is not supported in your browser.');
+    }
+  }, [words, shuffledWordIndices, currentWordIndexInShuffled]);
 
   // Helper to find the first non-space index in a word
   const findFirstNonSpaceIndex = (word) => {
@@ -94,13 +118,6 @@ const WordPlayMode = ({ words }) => {
       index++;
     }
     return index;
-  };
-
-  // Format time for display
-  const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   /**
@@ -122,7 +139,9 @@ const WordPlayMode = ({ words }) => {
     setSessionScore(0); // Reset session score
     setTotalSessionErrors(0); // Reset total session errors
     setIsSessionOver(false); // Reset session over flag
-    setTimeElapsed(0); // Reset timer
+    setCountdownTime(60); // Reset countdown timer
+    setTotalHintCount(0); // Reset total hints used
+    setCurrentWordHintUsed(false); // Reset hint used for current word
 
     // Clear any running timer
     if (timerIntervalRef.current) {
@@ -150,27 +169,6 @@ const WordPlayMode = ({ words }) => {
     resetGame();
   }, [words, resetGame]);
 
-  // Timer effect
-  useEffect(() => {
-    if (isPlaying && !isSessionOver) {
-      timerIntervalRef.current = setInterval(() => {
-        setTimeElapsed(prevTime => prevTime + 1);
-      }, 1000);
-    } else {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-        timerIntervalRef.current = null;
-      }
-    }
-    // Cleanup on unmount or when dependencies change
-    return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-    };
-  }, [isPlaying, isSessionOver]);
-
-
   // Determine the current word and meaning from the shuffled list
   const currentWord = words[shuffledWordIndices[currentWordIndexInShuffled]]?.word.toLowerCase() || '';
   const currentMeaning = words[shuffledWordIndices[currentWordIndexInShuffled]]?.meaning || '';
@@ -195,6 +193,75 @@ const WordPlayMode = ({ words }) => {
     }
     return display.split('').join(' '); // Add spaces between characters for visual separation
   };
+
+  // Callback to handle skipping a word when the timer runs out
+  const handleWordSkipped = useCallback(() => {
+    setTotalSessionErrors(prevTotal => prevTotal + 1); // Increment total errors for skipped word
+    setMessage(`Time's up! The word "${currentWord.toUpperCase()}" was skipped.`);
+    setErrorCount(0); // Reset errors for the current word
+    setCountdownTime(60); // Reset countdown for the next word
+    setCurrentWordHintUsed(false); // Reset hint state for the next word
+
+    // Clear the current timer interval
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+
+    // Move to next word or end session
+    if (currentWordIndexInShuffled + 1 < shuffledWordIndices.length) {
+      setTimeout(() => {
+        const nextWordIdx = currentWordIndexInShuffled + 1;
+        setCurrentWordIndexInShuffled(nextWordIdx);
+        const nextWordToGuess = words[shuffledWordIndices[nextWordIdx]].word.toLowerCase();
+        setCurrentGuessPosition(findFirstNonSpaceIndex(nextWordToGuess));
+        setRevealed(true); // Show next word briefly
+        setIsPlaying(false); // Pause game until "I'm Ready" for next word
+        setMessage(`Next word: "${words[shuffledWordIndices[nextWordIdx]].meaning}"`);
+      }, 1000);
+    } else {
+      setIsPlaying(false);
+      setIsSessionOver(true);
+      playDuck(); // Play duck sound for game over/session end due to skips
+    }
+  }, [currentWord, currentWordIndexInShuffled, shuffledWordIndices, words, playDuck]);
+
+
+  // Countdown Timer effect
+  useEffect(() => {
+    // Start countdown only when playing, session is not over, and the word is hidden (game is active)
+    if (isPlaying && !isSessionOver && !revealed) {
+      // Clear any existing interval before setting a new one
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+      timerIntervalRef.current = setInterval(() => {
+        setCountdownTime(prevTime => {
+          if (prevTime <= 1) {
+            // Time's up for the current word
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+            handleWordSkipped(); // Call function to handle skipping
+            return 60; // Reset for next word, will be set again when next word starts
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
+    } else {
+      // If not playing, session is over, or word is revealed, clear the timer
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    }
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, [isPlaying, isSessionOver, revealed, currentWordIndexInShuffled, handleWordSkipped]); // Add handleWordSkipped as dependency
+
 
   /**
    * Handles an alphabet button click or keyboard input, checking if it matches the next expected letter.
@@ -239,7 +306,8 @@ const WordPlayMode = ({ words }) => {
         setSessionScore(prev => prev + 1); // Increment score for correctly guessed word
         setMessage(`Congratulations! You guessed "${currentWord.toUpperCase()}" correctly!`);
         setErrorCount(0); // Reset errors for the current word (important for next word)
-        setTimeElapsed(0); // Reset timer for the new word
+        setCountdownTime(60); // Reset countdown for the new word
+        setCurrentWordHintUsed(false); // Reset hint state for the next word
 
         // Clear timer for current word
         if (timerIntervalRef.current) {
@@ -298,10 +366,26 @@ const WordPlayMode = ({ words }) => {
     setRevealed(false); // Hide the word
     setIsPlaying(true);
     setErrorCount(0);
+    setCurrentWordHintUsed(false); // Reset hint used for the new word
     // Ensure currentGuessPosition starts at the first non-space character for the current word
     setCurrentGuessPosition(findFirstNonSpaceIndex(currentWord));
     setMessage('Guess the first letter!');
+    setCountdownTime(60); // Start countdown when ready
   };
+
+  // Callback to handle hint icon click
+  const handleHintClick = useCallback(() => {
+    if (totalHintCount < MAX_HINTS) {
+      setTotalHintCount(prev => prev + 1);
+      setCurrentWordHintUsed(true); // Mark hint as used for this word
+      setMessage('Hint: The meaning is now visible.');
+    } else {
+      setMessage('You have used all your hints! Game Over.');
+      setIsPlaying(false);
+      setIsSessionOver(true);
+      playDuck(); // Play a sound for game over due to hints
+    }
+  }, [totalHintCount, playDuck]);
 
 
   // Keyboard input handler
@@ -350,24 +434,49 @@ const WordPlayMode = ({ words }) => {
         <>
           {!isSessionOver && ( // Only show game elements if session is not over
             <>
-              {/* Timer display */}
-              <div className="text-2xl font-bold text-gray-800 mb-4">
-                Time: <span className="text-blue-600">{formatTime(timeElapsed)}</span>
+              {/* Countdown Timer display */}
+              {isPlaying && !revealed && ( // Show timer only when playing and word is hidden
+                <div className="text-2xl font-bold text-gray-800 mb-4">
+                  Time Remaining: <span className="text-red-600">{countdownTime}s</span>
+                </div>
+              )}
+
+              {/* Word/Placeholder displayed first with loudspeaker icon */}
+              <div className="flex items-center justify-center mb-4">
+                <div className={`text-5xl font-extrabold tracking-widest p-4 rounded-lg ${getPlaceholderColorClass()} transition-colors duration-300`}>
+                  {getDisplayWord().split('').map((char, index) => (
+                    <span key={index} className="inline-block mx-1">
+                      {char === ' ' ? '\u00A0' : char} {/* Non-breaking space for actual spaces */}
+                    </span>
+                  ))}
+                </div>
+                {currentWord && (
+                  <button
+                    onClick={handlePronounceCurrentWord}
+                    className="ml-4 p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200"
+                    aria-label="Pronounce word"
+                  >
+                    <Icon className='volume up' size={28} /> {/* Loudspeaker icon */}
+                  </button>
+                )}
               </div>
 
-              {/* Word/Placeholder displayed first */}
-              <div className={`text-5xl font-extrabold tracking-widest mb-4 p-4 rounded-lg ${getPlaceholderColorClass()} transition-colors duration-300`}>
-                {getDisplayWord().split('').map((char, index) => (
-                  <span key={index} className="inline-block mx-1">
-                    {char === ' ' ? '\u00A0' : char} {/* Non-breaking space for actual spaces */}
-                  </span>
-                ))}
-              </div>
-
-              {/* Meaning displayed second */}
+              {/* Meaning/Hint display */}
               <div className="mb-6 text-center">
                 <p className="text-xl font-semibold text-gray-700 mb-2">Meaning:</p>
-                <p className="text-2xl text-blue-600 font-bold italic">{currentMeaning}</p>
+                {isPlaying && !revealed && !currentWordHintUsed && totalHintCount < MAX_HINTS ? (
+                  <button
+                    onClick={handleHintClick}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 flex items-center mx-auto"
+                    aria-label="Get Hint"
+                  >
+                    <Icon className ='lightbulb outline' size={20} /> Show Hint ({MAX_HINTS - totalHintCount} remaining)
+                  </button>
+                ) : (
+                  <p className="text-2xl text-blue-600 font-bold italic">
+                    {currentMeaning}
+                  </p>
+                )}
               </div>
 
 
@@ -385,6 +494,10 @@ const WordPlayMode = ({ words }) => {
                   {/* Error counter in red */}
                   <div className="text-lg font-medium mb-4 text-red-600">
                     Errors: <span className="font-bold">{errorCount}</span> / {MAX_ERRORS}
+                  </div>
+                  {/* Hints Remaining display */}
+                  <div className="text-lg font-medium mb-4 text-purple-600">
+                    Hints Remaining: <span className="font-bold">{MAX_HINTS - totalHintCount}</span> / {MAX_HINTS}
                   </div>
                   <p className={`text-xl font-semibold mb-6 ${message.includes('Correct') ? 'text-green-600' : message.includes('Oops') ? 'text-red-600' : 'text-gray-700'}`}>
                     {message}
@@ -418,7 +531,10 @@ const WordPlayMode = ({ words }) => {
               <h3 className="text-3xl font-bold text-gray-800 mb-4">Game Session Over!</h3>
               <p className="text-xl text-gray-700 mb-2">Words Guessed: <span className="font-bold text-green-600">{sessionScore}</span> / {words.length}</p>
               <p className="text-xl text-gray-700 mb-4">Total Errors: <span className="font-bold text-red-600">{totalSessionErrors}</span></p>
-              {totalSessionErrors === 0 && sessionScore === words.length ? (
+              <p className="text-xl text-gray-700 mb-4">Hints Used: <span className="font-bold text-orange-600">{totalHintCount}</span> / {MAX_HINTS}</p>
+              {totalSessionErrors === 0 && sessionScore === words.length && totalHintCount === 0 ? (
+                <p className="text-2xl font-extrabold text-green-700 mb-4">Perfect Score!</p>
+              ) : totalSessionErrors === 0 && sessionScore === words.length ? (
                 <p className="text-2xl font-extrabold text-green-700 mb-4">Excellent!</p>
               ) : totalSessionErrors >= 1 && totalSessionErrors <= 2 && sessionScore === words.length ? (
                 <p className="text-2xl font-extrabold text-blue-700 mb-4">Good!</p>
